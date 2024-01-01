@@ -1,81 +1,88 @@
-import Split from "react-split";
-import { nanoid } from "nanoid";
-import { useEffect, useState } from "react";
-import Sidebar from "./Sidebar";
-import Editor from "./Editor";
+import { useState, useEffect } from "react";
+import { v4 as uuidv4 } from "uuid";
+import "./App.css";
+import Sidebar from "./Components/Sidebar/Sidebar";
+import Toolbar from "./Components/Toolbar/Toolbar";
+import Write from "./Components/Write/Write";
+import Preview from "./Components/Preview/Preview";
 
 function App() {
-  const [notes, setNotes] = useState(
-    () => JSON.parse(localStorage.getItem("notes")) || []
+  const [isPreview, setPreview] = useState(false);
+  const [dataArray, setDataArray] = useState([]);
+  const [markdownContent, setMarkdownContent] = useState(
+    "# Enter Your Title Here"
   );
-  const [currentNoteId, setCurrentNoteId] = useState(
-    (notes[0] && notes[0].id) || ""
-  );
+  const [userId, setUserId] = useState("");
+  const [isEmpty, setEmpty] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem("notes", JSON.stringify(notes));
-  }, [notes]);
+    const storedData = localStorage.getItem("notes");
+    setEmpty(localStorage.getItem("empty"));
+    if (storedData && storedData.length !== 0) {
+      let parsedData = JSON.parse(storedData);
+      setDataArray(parsedData);
+      setEmpty(false);
+    } else {
+      setEmpty(true);
+    }
 
-  function createNewNote() {
-    const newNote = {
-      id: nanoid(),
-      body: `# Enter title here \n\n`,
-    };
-    setNotes((prevNotes) => [newNote, ...prevNotes]);
-    setCurrentNoteId(newNote.id);
-  }
-
-  function updateNote(text) {
-    setNotes((oldNotes) => {
-      let arr = [];
-      for (let i = 0; i < oldNotes.length; i++) {
-        if (oldNotes[i].id === currentNoteId) {
-          arr.unshift({ ...oldNotes[i], body: text });
-        } else {
-          arr.push(oldNotes[i]);
-        }
-      }
-      return arr;
-    });
-  }
-
-  function deleteNote(event, noteId) {
-    event.stopPropagation();
-    setNotes((oldNotes) => oldNotes.filter((note) => note.id !== noteId));
-  }
-
-  function findCurrentNote() {
-    return (
-      notes.find((note) => {
-        return note.id === currentNoteId;
-      }) || notes[0]
-    );
-  }
-
+    localStorage.setItem("empty", isEmpty);
+  }, []);
   return (
-    <>
-      {notes.length > 0 ? (
-        <Split sizes={[15, 85]} direction="horizontal" className="split">
-          <Sidebar
-            notes={notes}
-            setCurrentNoteId={setCurrentNoteId}
-            currentNote={findCurrentNote()}
-            newNote={createNewNote}
-            deleteNote={deleteNote}
-          />
-          {currentNoteId && notes.length > 0 && (
-            <Editor updateNote={updateNote} currentNote={findCurrentNote()} />
-          )}
-        </Split>
-      ) : (
-        <div className="no-notes">
-          <h1>You have no notes</h1>
-          <button className="first-note" onClick={createNewNote}>
-            Create one now
+    <div className="mainContent">
+      {isEmpty ? (
+        <div className="landingPage">
+          <div className="landingHeading">
+            <p className="welcome">WELCOME TO</p>
+            <p className="landingMarkdown">MarkDown Editor</p>
+          </div>
+          <button
+            className="createNote"
+            onClick={() => {
+              setEmpty(false);
+              setDataArray(() => {
+                let firstItem = [
+                  {
+                    title: "Untitled",
+                    content: `# Untitled\n\nThis is an untitled note.`,
+                    id: uuidv4(),
+                  },
+                ];
+
+                localStorage.setItem("notes", JSON.stringify(firstItem));
+                return firstItem;
+              });
+            }}
+          >
+            Create a New Note &#x270d;
           </button>
         </div>
+      ) : (
+        <div className="App">
+          <Sidebar
+            data={dataArray}
+            setData={setDataArray}
+            setMarkdown={setMarkdownContent}
+            empty={setEmpty}
+            userId={setUserId}
+          />
+          <main>
+            <Toolbar preview={isPreview} setPreview={setPreview} />
+            {!isPreview ? (
+              <Write
+                markdown={markdownContent}
+                setMarkdown={setMarkdownContent}
+                userId={userId}
+                data={dataArray}
+                setData={setDataArray}
+              />
+            ) : (
+              <Preview markdown={markdownContent} />
+            )}
+          </main>
+        </div>
       )}
-    </>
+    </div>
   );
 }
 
